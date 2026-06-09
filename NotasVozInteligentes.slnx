@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/NotasVozInteligentes.Client/NotasVozInteligentes.Client.csproj" />
+  <Project Path="src/NotasVozInteligentes/NotasVozInteligentes.csproj" />
+</Solution>
