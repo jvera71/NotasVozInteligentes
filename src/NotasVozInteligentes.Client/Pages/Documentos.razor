@@ -1,0 +1,64 @@
+@page "/documentos"
+@inject ApiClient Api
+
+<PageTitle>Documentos</PageTitle>
+
+<h1>Documentos</h1>
+
+@if (error is not null)
+{
+    <div class="alerta alerta-error" role="alert">@error</div>
+}
+
+@if (cargando)
+{
+    <p class="estado">Cargando…</p>
+}
+else if (documentos.Count == 0)
+{
+    <p class="estado">Todavía no hay documentos. Convierte tus notas de voz para generar el primero.</p>
+}
+else
+{
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Creado</th>
+                <th>Modificado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var doc in documentos)
+            {
+                <tr>
+                    <td><a href="documentos/@doc.Id">@doc.Titulo</a></td>
+                    <td>@doc.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@doc.FechaModificacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<DocumentoResumenDto> documentos = [];
+    private bool cargando = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            documentos = await Api.ObtenerDocumentosAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudieron cargar los documentos: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

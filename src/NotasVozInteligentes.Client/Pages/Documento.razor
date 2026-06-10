@@ -1,0 +1,186 @@
+@page "/documentos/{Id:guid}"
+@implements IAsyncDisposable
+@inject ApiClient Api
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>@(documento?.Titulo ?? "Documento")</PageTitle>
+
+@if (error is not null)
+{
+    <div class="alerta alerta-error" role="alert">@error</div>
+}
+@if (aviso is not null)
+{
+    <div class="alerta alerta-ok" role="status">@aviso</div>
+}
+
+@if (cargando)
+{
+    <p class="estado">Cargando…</p>
+}
+else if (documento is null)
+{
+    <p class="estado">El documento no existe.</p>
+    <a href="documentos">← Volver al listado</a>
+}
+else
+{
+    <div class="editor-cabecera">
+        <input class="titulo-documento" @bind="titulo" @bind:event="oninput" />
+        <div class="editor-acciones">
+            <button class="btn" @onclick="AlternarVista">@(mostrarVistaPrevia ? "✏️ Editor" : "👁️ Vista previa")</button>
+            <button class="btn" @onclick="Copiar">📋 Copiar</button>
+            <button class="btn btn-primario" @onclick="Guardar" disabled="@(!hayCambios || guardando)">
+                @(guardando ? "Guardando…" : "💾 Guardar")
+            </button>
+            <button class="btn btn-peligro-sutil" @onclick="Eliminar">🗑️ Eliminar</button>
+        </div>
+    </div>
+
+    <div id="editor-monaco" class="editor-monaco" hidden="@mostrarVistaPrevia"></div>
+    @if (mostrarVistaPrevia)
+    {
+        <article class="vista-previa">@((MarkupString)htmlVistaPrevia)</article>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private DocumentoDto? documento;
+    private string titulo = string.Empty;
+    private bool cargando = true;
+    private bool guardando;
+    private bool hayCambios;
+    private bool mostrarVistaPrevia;
+    private string htmlVistaPrevia = string.Empty;
+    private string? error;
+    private string? aviso;
+
+    private IJSObjectReference? editor;
+    private IJSObjectReference? utilidades;
+    private DotNetObjectReference<Documento>? propiaRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            documento = await Api.ObtenerDocumentoAsync(Id);
+            titulo = documento?.Titulo ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo cargar el documento: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private bool editorCreado;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!editorCreado && documento is not null)
+        {
+            editorCreado = true;
+            propiaRef = DotNetObjectReference.Create(this);
+            editor = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./js/monacoEditor.js");
+            await editor.InvokeVoidAsync("create", "editor-monaco", documento.Contenido, propiaRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnContenidoCambiado()
+    {
+        if (!hayCambios)
+        {
+            hayCambios = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<IJSObjectReference> Utilidades() =>
+        utilidades ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./js/utilidades.js");
+
+    private async Task<string> ContenidoActual() =>
+        editor is null ? documento!.Contenido : await editor.InvokeAsync<string>("getValue");
+
+    private async Task AlternarVista()
+    {
+        if (!mostrarVistaPrevia)
+            htmlVistaPrevia = await (await Utilidades())
+                .InvokeAsync<string>("renderizarMarkdown", await ContenidoActual());
+        mostrarVistaPrevia = !mostrarVistaPrevia;
+    }
+
+    private async Task Guardar()
+    {
+        error = null;
+        aviso = null;
+        guardando = true;
+        try
+        {
+            var contenido = await ContenidoActual();
+            var tituloFinal = string.IsNullOrWhiteSpace(titulo) ? documento!.Titulo : titulo.Trim();
+            await Api.GuardarDocumentoAsync(Id, tituloFinal, contenido);
+            titulo = tituloFinal;
+            hayCambios = false;
+            aviso = "Documento guardado.";
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo guardar: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private async Task Copiar()
+    {
+        await (await Utilidades()).InvokeVoidAsync("copiarAlPortapapeles", await ContenidoActual());
+        aviso = "Markdown copiado al portapapeles.";
+        error = null;
+    }
+
+    private async Task Eliminar()
+    {
+        if (!await (await Utilidades()).InvokeAsync<bool>("confirmar", "¿Eliminar este documento? Esta acción no se puede deshacer."))
+            return;
+
+        try
+        {
+            await Api.EliminarDocumentoAsync(Id);
+            Nav.NavigateTo("documentos");
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo eliminar: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        propiaRef?.Dispose();
+        if (editor is not null)
+        {
+            try
+            {
+                await editor.InvokeVoidAsync("dispose");
+                await editor.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+        if (utilidades is not null)
+        {
+            try { await utilidades.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}

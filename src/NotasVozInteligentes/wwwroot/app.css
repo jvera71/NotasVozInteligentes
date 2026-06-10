@@ -36,3 +36,264 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ===== Notas de Voz Inteligentes ===== */
+
+:root {
+    --color-primario: #4f46e5;
+    --color-primario-oscuro: #4338ca;
+    --color-peligro: #dc2626;
+    --color-texto: #1f2937;
+    --color-texto-suave: #6b7280;
+    --color-borde: #e5e7eb;
+    --color-fondo-suave: #f9fafb;
+}
+
+html, body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--color-texto);
+}
+
+.nav-principal {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--color-primario);
+    color: white;
+}
+
+    .nav-principal .marca {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .nav-principal nav {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .nav-principal a {
+        color: rgba(255, 255, 255, 0.85);
+        text-decoration: none;
+        padding: 0.35rem 0.85rem;
+        border-radius: 6px;
+    }
+
+        .nav-principal a:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-principal a.active {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            font-weight: 600;
+        }
+
+.contenido-principal {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.btn {
+    border: 1px solid var(--color-borde);
+    background: white;
+    color: var(--color-texto);
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+    .btn:hover:not(:disabled) {
+        background: var(--color-fondo-suave);
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+.btn-primario {
+    background: var(--color-primario);
+    border-color: var(--color-primario);
+    color: white;
+}
+
+    .btn-primario:hover:not(:disabled) {
+        background: var(--color-primario-oscuro);
+    }
+
+.btn-peligro {
+    background: var(--color-peligro);
+    border-color: var(--color-peligro);
+    color: white;
+}
+
+.btn-peligro-sutil {
+    color: var(--color-peligro);
+}
+
+.btn-grande {
+    font-size: 1.1rem;
+    padding: 0.7rem 1.4rem;
+}
+
+.grabando-pulso {
+    animation: pulso 1.2s ease-in-out infinite;
+}
+
+@keyframes pulso {
+    50% {
+        opacity: 0.65;
+    }
+}
+
+.grabadora {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0 2rem;
+}
+
+.estado {
+    color: var(--color-texto-suave);
+}
+
+.alerta {
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+}
+
+.alerta-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.alerta-ok {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+.lista-notas {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+}
+
+    .lista-notas li {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        padding: 0.6rem 0.4rem;
+        border-bottom: 1px solid var(--color-borde);
+    }
+
+    .lista-notas audio {
+        height: 2.2rem;
+        flex: 1;
+        max-width: 420px;
+    }
+
+.nota-fecha {
+    min-width: 130px;
+}
+
+.nota-duracion {
+    color: var(--color-texto-suave);
+    min-width: 48px;
+    font-variant-numeric: tabular-nums;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .tabla th {
+        text-align: left;
+        padding: 0.55rem 0.6rem;
+        border-bottom: 2px solid var(--color-borde);
+        color: var(--color-texto-suave);
+        font-weight: 600;
+    }
+
+    .tabla td {
+        padding: 0.55rem 0.6rem;
+        border-bottom: 1px solid var(--color-borde);
+    }
+
+.celda-acciones {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.form-termino {
+    display: flex;
+    gap: 0.6rem;
+    margin: 1rem 0;
+}
+
+.form-termino input,
+.buscador,
+.titulo-documento {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--color-borde);
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.campo-descripcion {
+    flex: 1;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.buscador {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0.75rem;
+}
+
+.editor-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0.5rem 0 1rem;
+    flex-wrap: wrap;
+}
+
+.titulo-documento {
+    font-size: 1.15rem;
+    font-weight: 600;
+    flex: 1;
+    min-width: 240px;
+}
+
+.editor-acciones {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.editor-monaco {
+    height: calc(100vh - 220px);
+    min-height: 320px;
+    border: 1px solid var(--color-borde);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.vista-previa {
+    border: 1px solid var(--color-borde);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    min-height: 320px;
+    background: white;
+}

@@ -1,0 +1,188 @@
+@page "/vocabulario"
+@inject ApiClient Api
+@inject IJSRuntime JS
+
+<PageTitle>Vocabulario</PageTitle>
+
+<h1>Vocabulario</h1>
+<p class="estado">
+    Términos propios (proyectos, productos, tecnologías…) que se envían a Gemini
+    para que se transcriban siempre con la grafía correcta.
+</p>
+
+@if (error is not null)
+{
+    <div class="alerta alerta-error" role="alert">@error</div>
+}
+
+<form class="form-termino" @onsubmit="Crear">
+    <input placeholder="Término (ej. opstream)" @bind="nuevoTermino" @bind:event="oninput" />
+    <input placeholder="Descripción opcional (ej. proyecto de streaming interno)"
+           class="campo-descripcion" @bind="nuevaDescripcion" @bind:event="oninput" />
+    <button type="submit" class="btn btn-primario" disabled="@(string.IsNullOrWhiteSpace(nuevoTermino))">➕ Añadir</button>
+</form>
+
+<input class="buscador" placeholder="🔍 Buscar…" @bind="filtro" @bind:event="oninput" />
+
+@if (cargando)
+{
+    <p class="estado">Cargando…</p>
+}
+else if (!Filtrados.Any())
+{
+    <p class="estado">@(terminos.Count == 0 ? "El vocabulario está vacío." : "Ningún término coincide con la búsqueda.")</p>
+}
+else
+{
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Término</th>
+                <th>Descripción</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var termino in Filtrados)
+            {
+                <tr>
+                    @if (editandoId == termino.Id)
+                    {
+                        <td><input @bind="editTermino" @bind:event="oninput" /></td>
+                        <td><input class="campo-descripcion" @bind="editDescripcion" @bind:event="oninput" /></td>
+                        <td class="celda-acciones">
+                            <button class="btn btn-primario" @onclick="GuardarEdicion"
+                                    disabled="@(string.IsNullOrWhiteSpace(editTermino))">💾</button>
+                            <button class="btn" @onclick="CancelarEdicion">✖️</button>
+                        </td>
+                    }
+                    else
+                    {
+                        <td><strong>@termino.Termino</strong></td>
+                        <td>@termino.Descripcion</td>
+                        <td class="celda-acciones">
+                            <button class="btn" title="Editar" @onclick="() => EmpezarEdicion(termino)">✏️</button>
+                            <button class="btn btn-peligro-sutil" title="Eliminar" @onclick="() => Eliminar(termino)">🗑️</button>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TerminoDto> terminos = [];
+    private bool cargando = true;
+    private string? error;
+    private string filtro = string.Empty;
+
+    private string nuevoTermino = string.Empty;
+    private string nuevaDescripcion = string.Empty;
+
+    private Guid? editandoId;
+    private string editTermino = string.Empty;
+    private string editDescripcion = string.Empty;
+
+    private IEnumerable<TerminoDto> Filtrados =>
+        string.IsNullOrWhiteSpace(filtro)
+            ? terminos
+            : terminos.Where(t =>
+                t.Termino.Contains(filtro, StringComparison.OrdinalIgnoreCase) ||
+                (t.Descripcion?.Contains(filtro, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            terminos = await Api.ObtenerVocabularioAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo cargar el vocabulario: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task Crear()
+    {
+        if (string.IsNullOrWhiteSpace(nuevoTermino))
+            return;
+
+        error = null;
+        try
+        {
+            var creado = await Api.CrearTerminoAsync(nuevoTermino, nuevaDescripcion);
+            terminos.Add(creado);
+            terminos.Sort((a, b) => string.Compare(a.Termino, b.Termino, StringComparison.OrdinalIgnoreCase));
+            nuevoTermino = string.Empty;
+            nuevaDescripcion = string.Empty;
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo crear el término: {ex.Message}";
+        }
+    }
+
+    private void EmpezarEdicion(TerminoDto termino)
+    {
+        editandoId = termino.Id;
+        editTermino = termino.Termino;
+        editDescripcion = termino.Descripcion ?? string.Empty;
+    }
+
+    private void CancelarEdicion() => editandoId = null;
+
+    private async Task GuardarEdicion()
+    {
+        if (editandoId is null || string.IsNullOrWhiteSpace(editTermino))
+            return;
+
+        error = null;
+        try
+        {
+            await Api.ActualizarTerminoAsync(editandoId.Value, editTermino, editDescripcion);
+            var indice = terminos.FindIndex(t => t.Id == editandoId.Value);
+            terminos[indice] = terminos[indice] with
+            {
+                Termino = editTermino.Trim(),
+                Descripcion = string.IsNullOrWhiteSpace(editDescripcion) ? null : editDescripcion.Trim()
+            };
+            editandoId = null;
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo guardar el término: {ex.Message}";
+        }
+    }
+
+    private async Task Eliminar(TerminoDto termino)
+    {
+        var utilidades = await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./js/utilidades.js");
+        if (!await utilidades.InvokeAsync<bool>("confirmar", $"¿Eliminar el término '{termino.Termino}'?"))
+            return;
+
+        error = null;
+        try
+        {
+            await Api.EliminarTerminoAsync(termino.Id);
+            terminos.RemoveAll(t => t.Id == termino.Id);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo eliminar el término: {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,18 @@
+services:
+  notas-voz-inteligentes:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: notas-voz-inteligentes:latest
+    container_name: notas-voz-inteligentes
+    ports:
+      - "8080:8080"
+    environment:
+      - Gemini__ApiKey=${GEMINI_API_KEY}
+      - Gemini__Model=${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - notas-data:/app/App_Data
+    restart: unless-stopped
+
+volumes:
+  notas-data:

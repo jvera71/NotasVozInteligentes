@@ -1,7 +1,198 @@
-﻿@page "/"
+@page "/"
+@implements IAsyncDisposable
+@inject ApiClient Api
+@inject IJSRuntime JS
+@inject NavigationManager Nav
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Notas de voz</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Notas de voz</h1>
 
-Welcome to your new app.
+@if (error is not null)
+{
+    <div class="alerta alerta-error" role="alert">@error</div>
+}
+
+<section class="grabadora">
+    @if (!grabando)
+    {
+        <button class="btn btn-primario btn-grande" @onclick="EmpezarGrabacion" disabled="@convirtiendo">
+            🎙️ Grabar nota
+        </button>
+    }
+    else
+    {
+        <button class="btn btn-peligro btn-grande grabando-pulso" @onclick="DetenerGrabacion">
+            ⏹️ Detener y guardar
+        </button>
+        <button class="btn" @onclick="CancelarGrabacion">Cancelar</button>
+    }
+    @if (subiendo)
+    {
+        <span class="estado">Subiendo nota…</span>
+    }
+</section>
+
+<section>
+    <h2>Pendientes de conversión (@notas.Count)</h2>
+
+    @if (cargando)
+    {
+        <p class="estado">Cargando…</p>
+    }
+    else if (notas.Count == 0)
+    {
+        <p class="estado">No hay notas pendientes. Graba una nota para empezar.</p>
+    }
+    else
+    {
+        <ul class="lista-notas">
+            @foreach (var nota in notas)
+            {
+                <li>
+                    <span class="nota-fecha">@nota.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    <span class="nota-duracion">@FormatearDuracion(nota.DuracionSegundos)</span>
+                    <audio controls preload="none" src="@Api.UrlAudio(nota.Id)"></audio>
+                    <button class="btn btn-peligro-sutil" title="Eliminar nota"
+                            @onclick="() => EliminarNota(nota.Id)" disabled="@convirtiendo">🗑️</button>
+                </li>
+            }
+        </ul>
+
+        <button class="btn btn-primario btn-grande" @onclick="Convertir" disabled="@(convirtiendo || grabando)">
+            @if (convirtiendo)
+            {
+                <span>⏳ Analizando @notas.Count notas…</span>
+            }
+            else
+            {
+                <span>✨ Convertir a texto</span>
+            }
+        </button>
+    }
+</section>
+
+@code {
+    private List<NotaVozDto> notas = [];
+    private bool cargando = true;
+    private bool grabando;
+    private bool subiendo;
+    private bool convirtiendo;
+    private string? error;
+    private IJSObjectReference? grabadora;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            notas = await Api.ObtenerNotasAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudieron cargar las notas: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task<IJSObjectReference> Grabadora() =>
+        grabadora ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./js/audioRecorder.js");
+
+    private async Task EmpezarGrabacion()
+    {
+        error = null;
+        try
+        {
+            await (await Grabadora()).InvokeVoidAsync("start");
+            grabando = true;
+        }
+        catch (JSException ex)
+        {
+            error = ex.Message.Contains("NotAllowed") || ex.Message.Contains("Permission")
+                ? "No se pudo acceder al micrófono. Comprueba los permisos del navegador."
+                : $"Error al iniciar la grabación: {ex.Message}";
+        }
+    }
+
+    private async Task DetenerGrabacion()
+    {
+        grabando = false;
+        subiendo = true;
+        try
+        {
+            var modulo = await Grabadora();
+            var audio = await modulo.InvokeAsync<byte[]>("stop");
+            var mimeType = await modulo.InvokeAsync<string>("getMimeType");
+            var duracion = await modulo.InvokeAsync<double>("getDuracionSegundos");
+
+            var nota = await Api.SubirNotaAsync(audio, mimeType, duracion);
+            notas.Add(nota);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo guardar la nota: {ex.Message}";
+        }
+        finally
+        {
+            subiendo = false;
+        }
+    }
+
+    private async Task CancelarGrabacion()
+    {
+        grabando = false;
+        await (await Grabadora()).InvokeVoidAsync("cancel");
+    }
+
+    private async Task EliminarNota(Guid id)
+    {
+        error = null;
+        try
+        {
+            await Api.EliminarNotaAsync(id);
+            notas.RemoveAll(n => n.Id == id);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo eliminar la nota: {ex.Message}";
+        }
+    }
+
+    private async Task Convertir()
+    {
+        error = null;
+        convirtiendo = true;
+        try
+        {
+            var documentoId = await Api.ConvertirAsync();
+            Nav.NavigateTo($"documentos/{documentoId}");
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            error = $"La conversión falló: {ex.Message}";
+        }
+        finally
+        {
+            convirtiendo = false;
+        }
+    }
+
+    private static string FormatearDuracion(double? segundos) =>
+        segundos is null ? "" : TimeSpan.FromSeconds(segundos.Value).ToString(@"mm\:ss");
+
+    public async ValueTask DisposeAsync()
+    {
+        if (grabadora is not null)
+        {
+            try { await grabadora.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}

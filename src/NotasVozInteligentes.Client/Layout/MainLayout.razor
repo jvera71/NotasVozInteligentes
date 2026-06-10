@@ -1,6 +1,17 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@Body
+<header class="nav-principal">
+    <span class="marca">🎙️ Notas de Voz Inteligentes</span>
+    <nav>
+        <NavLink href="" Match="NavLinkMatch.All">Notas</NavLink>
+        <NavLink href="documentos">Documentos</NavLink>
+        <NavLink href="vocabulario">Vocabulario</NavLink>
+    </nav>
+</header>
+
+<main class="contenido-principal">
+    @Body
+</main>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
