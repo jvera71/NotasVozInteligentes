@@ -1,0 +1,24 @@
+{
+  "name": "Notas de Voz Inteligentes",
+  "short_name": "NotasVoz",
+  "description": "Captura notas de voz y conviértelas en documentos estructurados con la API de Gemini.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#dc2626",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

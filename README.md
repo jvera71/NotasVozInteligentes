@@ -93,29 +93,6 @@ Para detenerla:
 docker compose down
 ```
 
-> [!NOTE]
-> Si anteriormente habías ejecutado el contenedor y tienes problemas de permisos con la base de datos SQLite (Error 14), puedes limpiar el volumen antiguo con `docker compose down -v` y volver a levantarlo para que se cree con los nuevos permisos.
-
-### 3. Construir y publicar la imagen en Docker Hub
-
-Si realizas modificaciones en el código y deseas subir tu propia versión de la imagen a Docker Hub:
-
-#### 3.1. Iniciar sesión en Docker Hub
-```bash
-docker login
-```
-
-#### 3.2. Construir la imagen
-Ejecuta el comando desde la raíz del repositorio:
-```bash
-docker build -t husuario/notasvozinteligentes:latest -f src/NotasVozInteligentes/Dockerfile .
-```
-
-#### 3.3. Subir la imagen
-```bash
-docker push husuario/notasvozinteligentes:latest
-```
-
 ---
 
 ## 📂 Estructura del proyecto
