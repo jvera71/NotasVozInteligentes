@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 # Datos locales de la aplicacion (SQLite + audios)
 App_Data/
+/.tmp.driveupload
