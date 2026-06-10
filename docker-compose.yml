@@ -1,9 +1,6 @@
 services:
   notas-voz-inteligentes:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: notas-voz-inteligentes:latest
+    image: husuario/notasvozinteligentes:latest
     container_name: notas-voz-inteligentes
     ports:
       - "8080:8080"
